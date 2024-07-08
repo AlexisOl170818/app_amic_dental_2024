@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "643766654426",
+    "project_id": "cloud-flutter-message",
+    "storage_bucket": "cloud-flutter-message.appspot.com"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:643766654426:android:46eff2724bd0c325c55ce3",
+        "android_client_info": {
+          "package_name": "com.infoexpo.amic.app_amic"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBQ9f8Ok8GL85QnAkRftWZ9mzHrh_9JJ4Q"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
