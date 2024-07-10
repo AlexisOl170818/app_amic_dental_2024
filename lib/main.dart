@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:app_amic_dental_2024/router/app_routes.dart';
 import 'package:app_amic_dental_2024/services/doc_upload/doc_service.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -6,6 +8,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_easyloading/flutter_easyloading.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:http/http.dart' as http;
+
+import 'package:path_provider/path_provider.dart';
 import 'package:provider/provider.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
@@ -18,6 +23,16 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     storageBucket: 'cloud-flutter-message.appspot.com',
   ));
   print("Handling a background message: ${message.messageId}");
+  showNotification(message);
+}
+
+Future<String> _downloadAndSaveFile(String url, String fileName) async {
+  final Directory directory = await getApplicationDocumentsDirectory();
+  final String filePath = '${directory.path}/$fileName';
+  final response = await http.get(Uri.parse(url));
+  final File file = File(filePath);
+  await file.writeAsBytes(response.bodyBytes);
+  return filePath;
 }
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
@@ -35,22 +50,8 @@ Future<void> main() async {
   );
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
 
-  FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-    if (message.notification != null) {
-      var androidPlatformChannelSpecifics = const AndroidNotificationDetails(
-        'test_channel_id',
-        'Notificaciones prueba',
-        importance: Importance.max,
-        priority: Priority.high,
-        showWhen: false,
-      );
-      var platformChannelSpecifics = NotificationDetails(
-        android: androidPlatformChannelSpecifics,
-      );
-      flutterLocalNotificationsPlugin.show(0, message.notification!.title,
-          message.notification!.body, platformChannelSpecifics,
-          payload: 'item x');
-    }
+  FirebaseMessaging.onMessage.listen((RemoteMessage message) async {
+    showNotification(message);
   });
   var initializationSettingsAndroid =
       const AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -64,6 +65,43 @@ Future<void> main() async {
   await getFBToken();
 
   runApp(const MyApp());
+}
+
+showNotification(RemoteMessage message) async {
+  if (message.notification != null) {
+    String? largeIconPath;
+    if (message.notification?.android?.imageUrl != null) {
+      largeIconPath = await _downloadAndSaveFile(
+          message.notification!.android!.imageUrl ?? "", 'largeIcon');
+    }
+
+    var bigPictureStyleInformation = BigPictureStyleInformation(
+        (largeIconPath != null ? FilePathAndroidBitmap(largeIconPath) : null)
+            as AndroidBitmap<Object>,
+        largeIcon:
+            largeIconPath != null ? FilePathAndroidBitmap(largeIconPath) : null,
+        contentTitle: message.notification!.title,
+        htmlFormatContentTitle: true,
+        summaryText: message.notification!.body,
+        htmlFormatSummaryText: true,
+        hideExpandedLargeIcon: true);
+    var androidPlatformChannelSpecifics = AndroidNotificationDetails(
+        'test_channel_id', 'Notificaciones prueba',
+        importance: Importance.max,
+        priority: Priority.high,
+        showWhen: false,
+        enableVibration: true,
+        styleInformation: bigPictureStyleInformation,
+        largeIcon: largeIconPath != null
+            ? FilePathAndroidBitmap(largeIconPath)
+            : null);
+    var platformChannelSpecifics = NotificationDetails(
+      android: androidPlatformChannelSpecifics,
+    );
+    flutterLocalNotificationsPlugin.show(0, message.notification!.title,
+        message.notification!.body, platformChannelSpecifics,
+        payload: 'item x');
+  }
 }
 
 Future<void> loadConfig() async {
@@ -84,7 +122,7 @@ Future<void> loadConfig() async {
 
 Future<void> getFBToken() async {
   final fcmToken = await FirebaseMessaging.instance.getToken();
-  await FirebaseMessaging.instance.requestPermission(
+  /*  await FirebaseMessaging.instance.requestPermission(
     alert: true,
     announcement: true,
     badge: true,
@@ -92,14 +130,14 @@ Future<void> getFBToken() async {
     criticalAlert: true,
     provisional: false,
     sound: true,
-  );
+  ); */
   print("FCM Token: $fcmToken");
   await FirebaseMessaging.instance.setAutoInitEnabled(true);
-  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
+  /*  await FirebaseMessaging.instance.setForegroundNotificationPresentationOptions(
     alert: true, // Required to display a heads up notification
     badge: true,
     sound: true,
-  );
+  ); */
   FirebaseMessaging.instance.onTokenRefresh.listen((fcmToken) {
     // TODO: If necessary send token to application server.
     print("New FCM Token: $fcmToken");
